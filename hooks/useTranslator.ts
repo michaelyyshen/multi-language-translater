@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { nanoid } from "nanoid";
 import type { Block, Language } from "@/lib/types";
+import { SUPPORTED_LANGUAGES } from "@/lib/mymemory";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
@@ -18,26 +19,19 @@ async function safeJson<T>(res: Response): Promise<T> {
 const DEBOUNCE_MS = 400;
 const MAX_BLOCKS = 5;
 
-const DEFAULT_LANGUAGES: Language[] = [
-  { code: "en",    name: "English" },
-  { code: "zh-CN", name: "Chinese (Simplified)" },
-  { code: "zh-TW", name: "Chinese (Traditional)" },
-  { code: "de",    name: "German" },
-  { code: "fr",    name: "French" },
-  { code: "es",    name: "Spanish" },
-  { code: "ja",    name: "Japanese" },
-  { code: "ko",    name: "Korean" },
-  { code: "ar",    name: "Arabic" },
-  { code: "pt",    name: "Portuguese" },
-  { code: "ru",    name: "Russian" },
-];
+const DEFAULT_LANGUAGES: Language[] = SUPPORTED_LANGUAGES.filter(
+  (l) => l.code !== "auto"
+);
 
 function makeBlock(langCode: string, text = ""): Block {
   return { id: nanoid(), langCode, text, isLoading: false, error: null };
 }
 
 export function useTranslator() {
-  const [languages, setLanguages] = useState<Language[]>([]);
+  const [languages] = useState<Language[]>([
+    { code: "auto", name: "Auto-detect" },
+    ...DEFAULT_LANGUAGES,
+  ]);
   const [blocks, setBlocks] = useState<Block[]>([
     makeBlock("auto"),
     makeBlock("en"),
@@ -45,25 +39,6 @@ export function useTranslator() {
 
   const activeBlockIdRef = useRef<string | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    fetch(`${API_BASE}/api/translate`, { cache: "no-store" })
-      .then((r) => safeJson<{ languages?: Language[] }>(r))
-      .then((data) => {
-        if (data.languages) {
-          setLanguages([
-            { code: "auto", name: "Auto-detect" },
-            ...data.languages,
-          ]);
-        }
-      })
-      .catch(() => {
-        setLanguages([
-          { code: "auto", name: "Auto-detect" },
-          ...DEFAULT_LANGUAGES,
-        ]);
-      });
-  }, []);
 
   const translateFrom = useCallback((sourceId: string) => {
     setBlocks((prev) => {
