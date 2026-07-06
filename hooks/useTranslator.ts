@@ -18,7 +18,18 @@ async function safeJson<T>(res: Response): Promise<T> {
 const DEBOUNCE_MS = 400;
 const MAX_BLOCKS = 5;
 
-const DEFAULT_LANG_CODES = ["en", "zh-CN", "de", "fr", "es", "ja", "ko", "ar", "pt", "ru"];
+const DEFAULT_LANGUAGES: Language[] = [
+  { code: "en",    name: "English" },
+  { code: "zh-CN", name: "Chinese (Simplified)" },
+  { code: "de",    name: "German" },
+  { code: "fr",    name: "French" },
+  { code: "es",    name: "Spanish" },
+  { code: "ja",    name: "Japanese" },
+  { code: "ko",    name: "Korean" },
+  { code: "ar",    name: "Arabic" },
+  { code: "pt",    name: "Portuguese" },
+  { code: "ru",    name: "Russian" },
+];
 
 function makeBlock(langCode: string, text = ""): Block {
   return { id: nanoid(), langCode, text, isLoading: false, error: null };
@@ -48,7 +59,7 @@ export function useTranslator() {
       .catch(() => {
         setLanguages([
           { code: "auto", name: "Auto-detect" },
-          ...DEFAULT_LANG_CODES.map((c) => ({ code: c, name: c.toUpperCase() })),
+          ...DEFAULT_LANGUAGES,
         ]);
       });
   }, []);
@@ -180,7 +191,7 @@ export function useTranslator() {
       if (prev.length >= MAX_BLOCKS) return prev;
       const usedLangs = new Set(prev.map((b) => b.langCode));
       const nextLang =
-        DEFAULT_LANG_CODES.find((l) => !usedLangs.has(l)) ?? DEFAULT_LANG_CODES[0];
+        DEFAULT_LANGUAGES.find((l) => !usedLangs.has(l.code))?.code ?? DEFAULT_LANGUAGES[0].code;
       const newBlock = makeBlock(nextLang);
       // Translate into new block immediately if there's a source
       const source = prev.find((b) => b.text.trim() !== "");
