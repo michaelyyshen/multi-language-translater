@@ -1,6 +1,0 @@
-{
-  "env": {
-    "LIBRETRANSLATE_URL": "@libretranslate_url",
-    "LIBRETRANSLATE_API_KEY": "@libretranslate_api_key"
-  }
-}
