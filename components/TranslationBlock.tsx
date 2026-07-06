@@ -1,8 +1,11 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { LanguageSelect } from "./LanguageSelect";
+import { VoiceInputButton } from "./VoiceInputButton";
+import { AudioOutputButton } from "./AudioOutputButton";
+import { PhoneticPanel } from "./PhoneticPanel";
 import type { Block, Language } from "@/lib/types";
 
 interface Props {
@@ -10,6 +13,8 @@ interface Props {
   languages: Language[];
   canRemove: boolean;
   onTextChange: (id: string, text: string) => void;
+  /** Update text without scheduling a translation (used for interim voice results) */
+  onTextSilent: (id: string, text: string) => void;
   onLangChange: (id: string, langCode: string) => void;
   onRemove: (id: string) => void;
 }
@@ -19,6 +24,7 @@ export function TranslationBlock({
   languages,
   canRemove,
   onTextChange,
+  onTextSilent,
   onLangChange,
   onRemove,
 }: Props) {
@@ -32,6 +38,23 @@ export function TranslationBlock({
     el.style.height = `${el.scrollHeight}px`;
   }, [block.text]);
 
+  const handleInterim = useCallback(
+    (interim: string) => {
+      onTextSilent(block.id, interim);
+    },
+    [block.id, onTextSilent]
+  );
+
+  const handleFinal = useCallback(
+    (final: string) => {
+      onTextChange(block.id, final);
+    },
+    [block.id, onTextChange]
+  );
+
+  const langName =
+    languages.find((l) => l.code === block.langCode)?.name ?? block.langCode;
+
   return (
     <motion.div
       layout
@@ -41,7 +64,7 @@ export function TranslationBlock({
       transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
       className="glass-card flex flex-col gap-3 p-4 relative"
     >
-      {/* Header row: language selector + remove button */}
+      {/* Header row: language selector + action buttons */}
       <div className="flex items-center justify-between gap-2">
         <LanguageSelect
           value={block.langCode}
@@ -50,22 +73,35 @@ export function TranslationBlock({
           onChange={(lc) => onLangChange(block.id, lc)}
         />
 
-        {canRemove && (
-          <button
-            onClick={() => onRemove(block.id)}
-            aria-label="Remove this language block"
-            className="
-              p-1 rounded-md text-slate-400 dark:text-slate-500
-              hover:text-rose-500 dark:hover:text-rose-400
-              hover:bg-rose-50 dark:hover:bg-rose-950/30
-              transition-colors duration-150
-            "
-          >
-            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
-              <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-            </svg>
-          </button>
-        )}
+        <div className="flex items-center gap-0.5">
+          {/* Voice input */}
+          <VoiceInputButton
+            langCode={block.langCode}
+            onInterim={handleInterim}
+            onFinal={handleFinal}
+          />
+
+          {/* Audio output */}
+          <AudioOutputButton text={block.text} langCode={block.langCode} />
+
+          {/* Remove block */}
+          {canRemove && (
+            <button
+              onClick={() => onRemove(block.id)}
+              aria-label="Remove this language block"
+              className="
+                p-1.5 rounded-md text-slate-400 dark:text-slate-500
+                hover:text-rose-500 dark:hover:text-rose-400
+                hover:bg-rose-50 dark:hover:bg-rose-950/30
+                transition-colors duration-150
+              "
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
+                <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Textarea + shimmer overlay */}
@@ -76,8 +112,8 @@ export function TranslationBlock({
           onChange={(e) => onTextChange(block.id, e.target.value)}
           placeholder={
             block.langCode === "auto"
-              ? "Type here to translate…"
-              : `Translation in ${languages.find((l) => l.code === block.langCode)?.name ?? block.langCode}…`
+              ? "Type or speak here to translate…"
+              : `Translation in ${langName}…`
           }
           rows={4}
           className="
@@ -108,6 +144,12 @@ export function TranslationBlock({
           {block.error}
         </p>
       )}
+
+      {/* Phonetic panel */}
+      <PhoneticPanel
+        text={block.text}
+        langCode={block.langCode}
+      />
     </motion.div>
   );
 }

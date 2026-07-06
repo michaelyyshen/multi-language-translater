@@ -10,6 +10,7 @@ export interface Block {
   isLoading: boolean;
   error: string | null;
   detectedLang?: string;
+  phonetics?: string;
 }
 
 export interface TranslateRequest {

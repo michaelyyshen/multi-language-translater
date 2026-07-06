@@ -57,7 +57,13 @@ async function googleTranslate(
     throw new Error(`Google Translate request failed: ${res.status}`);
   }
 
-  const data = (await res.json()) as GoogleTranslateResponse;
+  const raw = await res.text();
+  let data: GoogleTranslateResponse;
+  try {
+    data = JSON.parse(raw) as GoogleTranslateResponse;
+  } catch {
+    throw new Error(`Google Translate returned non-JSON response (status ${res.status})`);
+  }
 
   // Concatenate all translated segments
   const segments = data[0];

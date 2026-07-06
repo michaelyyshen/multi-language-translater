@@ -63,3 +63,36 @@ textarea {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
+
+/* Mic pulse ring — used by VoiceInputButton while recording */
+@keyframes pulse-mic {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50%       { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+
+.animate-pulse-mic {
+  animation: pulse-mic 1.2s ease-in-out infinite;
+}
+
+/* Sound-bar animations for AudioOutputButton */
+@keyframes soundbar {
+  0%, 100% { transform: scaleY(0.4); }
+  50%       { transform: scaleY(1); }
+}
+
+.animate-soundbar-1 {
+  transform-origin: bottom;
+  animation: soundbar 0.9s ease-in-out infinite;
+}
+.animate-soundbar-2 {
+  transform-origin: bottom;
+  animation: soundbar 0.9s ease-in-out infinite 0.15s;
+}
+.animate-soundbar-3 {
+  transform-origin: bottom;
+  animation: soundbar 0.9s ease-in-out infinite 0.3s;
+}
+.animate-soundbar-4 {
+  transform-origin: bottom;
+  animation: soundbar 0.9s ease-in-out infinite 0.45s;
+}

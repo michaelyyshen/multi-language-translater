@@ -12,6 +12,7 @@ export default function Home() {
     canAdd,
     canRemove,
     handleTextChange,
+    handleTextSilent,
     handleLangChange,
     addBlock,
     removeBlock,
@@ -57,6 +58,7 @@ export default function Home() {
                 languages={languages}
                 canRemove={canRemove}
                 onTextChange={handleTextChange}
+                onTextSilent={handleTextSilent}
                 onLangChange={handleLangChange}
                 onRemove={removeBlock}
               />

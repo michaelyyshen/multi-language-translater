@@ -6,14 +6,21 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "tauri": "tauri dev",
+    "build:tauri": "next build && tauri build",
+    "build:cap": "next build && npx cap sync"
   },
   "dependencies": {
-    "next": "14.2.5",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
     "framer-motion": "^11.3.8",
-    "nanoid": "^5.0.7"
+    "nanoid": "^5.0.7",
+    "next": "14.2.5",
+    "pinyin-pro": "^3.24.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",

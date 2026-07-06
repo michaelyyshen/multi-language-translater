@@ -4,6 +4,17 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { nanoid } from "nanoid";
 import type { Block, Language } from "@/lib/types";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+
+async function safeJson<T>(res: Response): Promise<T> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(`Server returned non-JSON response (${res.status})`);
+  }
+}
+
 const DEBOUNCE_MS = 400;
 const MAX_BLOCKS = 5;
 
@@ -24,8 +35,8 @@ export function useTranslator() {
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    fetch("/api/translate")
-      .then((r) => r.json())
+    fetch(`${API_BASE}/api/translate`)
+      .then((r) => safeJson<{ languages?: Language[] }>(r))
       .then((data) => {
         if (data.languages) {
           setLanguages([
@@ -51,27 +62,35 @@ export function useTranslator() {
         );
       }
 
+      // For "auto" blocks, use the already-detected language as the target.
+      // If detection hasn't happened yet, skip that block.
       const targets = prev
         .filter((b) => b.id !== sourceId)
-        .map((b) => b.langCode)
-        .filter((c) => c !== "auto");
+        .map((b) => (b.langCode === "auto" ? (b.detectedLang ?? null) : b.langCode))
+        .filter((c): c is string => c !== null);
 
       if (targets.length === 0) return prev;
 
-      const next = prev.map((b) =>
-        b.id === sourceId ? b : { ...b, isLoading: true, error: null }
-      );
+      // Only mark loading for blocks that will actually receive a translation.
+      // Auto blocks without a detectedLang are skipped from targets, so don't spin them.
+      const targetSet = new Set(targets);
+      const next = prev.map((b) => {
+        if (b.id === sourceId) return b;
+        const effectiveLang = b.langCode === "auto" ? (b.detectedLang ?? null) : b.langCode;
+        if (!effectiveLang || !targetSet.has(effectiveLang)) return { ...b, isLoading: false };
+        return { ...b, isLoading: true, error: null };
+      });
 
       const q = source.text;
       const sourceLang = source.langCode;
 
-      fetch("/api/translate", {
+      fetch(`${API_BASE}/api/translate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ q, source: sourceLang, targets }),
       })
-        .then((r) => r.json())
-        .then((data: { translations?: Record<string, string>; detectedLanguage?: string; error?: string }) => {
+        .then((r) => safeJson<{ translations?: Record<string, string>; detectedLanguage?: string; error?: string }>(r))
+        .then((data) => {
           if (data.error) throw new Error(data.error);
           setBlocks((current) => {
             if (activeBlockIdRef.current !== sourceId) return current;
@@ -82,7 +101,9 @@ export function useTranslator() {
                 }
                 return b;
               }
-              const translated = data.translations?.[b.langCode];
+              // Auto block: look up by detectedLang since the API key is the real lang code
+              const lookupCode = b.langCode === "auto" ? b.detectedLang : b.langCode;
+              const translated = lookupCode ? data.translations?.[lookupCode] : undefined;
               return {
                 ...b,
                 text: translated !== undefined ? translated : b.text,
@@ -120,6 +141,12 @@ export function useTranslator() {
     },
     [translateFrom]
   );
+
+  // Updates text locally without scheduling a translation — used for interim
+  // voice recognition results so we don't fire API calls mid-speech.
+  const handleTextSilent = useCallback((id: string, text: string) => {
+    setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, text } : b)));
+  }, []);
 
   const handleLangChange = useCallback(
     (id: string, langCode: string) => {
@@ -183,6 +210,7 @@ export function useTranslator() {
     canAdd,
     canRemove,
     handleTextChange,
+    handleTextSilent,
     handleLangChange,
     addBlock,
     removeBlock,
