@@ -47,7 +47,7 @@ export function useTranslator() {
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/translate`)
+    fetch(`${API_BASE}/api/translate`, { cache: "no-store" })
       .then((r) => safeJson<{ languages?: Language[] }>(r))
       .then((data) => {
         if (data.languages) {
