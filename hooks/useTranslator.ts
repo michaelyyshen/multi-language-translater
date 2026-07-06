@@ -21,6 +21,7 @@ const MAX_BLOCKS = 5;
 const DEFAULT_LANGUAGES: Language[] = [
   { code: "en",    name: "English" },
   { code: "zh-CN", name: "Chinese (Simplified)" },
+  { code: "zh-TW", name: "Chinese (Traditional)" },
   { code: "de",    name: "German" },
   { code: "fr",    name: "French" },
   { code: "es",    name: "Spanish" },
