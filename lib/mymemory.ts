@@ -1,13 +1,13 @@
 /**
- * Google Translate free API helpers (no API key required)
- * Endpoint: https://translate.googleapis.com/translate_a/single
+ * MyMemory translation API (free, no API key required)
+ * Endpoint: https://api.mymemory.translated.net/get
  *
- * Response shape: [[["translatedText","sourceText",...]], null, "detectedLangCode", ...]
+ * Response shape: { responseData: { translatedText: string, match: number }, responseStatus: number, matches: [...] }
  */
 
-const BASE = "https://translate.googleapis.com/translate_a/single";
+const BASE = "https://api.mymemory.translated.net/get";
 
-// Languages supported — full list matching Google Translate free API (gtx client) codes
+// Languages supported — full list matching MyMemory supported language codes
 export const SUPPORTED_LANGUAGES = [
   { code: "auto",  name: "Auto-detect" },
   { code: "af",    name: "Afrikaans" },
@@ -146,60 +146,52 @@ export const SUPPORTED_LANGUAGES = [
   { code: "zu",    name: "Zulu" },
 ];
 
-type GoogleTranslateResponse = [
-  Array<[string, string, ...unknown[]]>, // segments: [translated, original, ...]
-  unknown,
-  string | null, // detected language code (index 2)
-  ...unknown[]
-];
+type MyMemoryResponse = {
+  responseData?: { translatedText?: string; match?: number };
+  responseStatus?: number;
+  responseDetails?: string;
+  matches?: Array<{ translation?: string }>;
+};
 
-async function googleTranslate(
+async function myMemoryTranslate(
   text: string,
   sl: string,
   tl: string
-): Promise<{ translated: string; detectedLang: string | null }> {
-  const params = new URLSearchParams({
-    client: "gtx",
-    sl,
-    tl,
-    dt: "t",
-    q: text,
+): Promise<string> {
+  const langPair = sl === "auto" ? `Autodetect|${tl}` : `${sl}|${tl}`;
+  const params = new URLSearchParams({ q: text, langpair: langPair });
+
+  const res = await fetch(`${BASE}?${params.toString()}`, {
+    headers: { "User-Agent": "Mozilla/5.0 multi-language-translater" },
   });
 
-  const res = await fetch(`${BASE}?${params.toString()}`);
   if (!res.ok) {
-    throw new Error(`Google Translate request failed: ${res.status}`);
+    throw new Error(`MyMemory request failed: ${res.status}`);
   }
 
-  const raw = await res.text();
-  let data: GoogleTranslateResponse;
-  try {
-    data = JSON.parse(raw) as GoogleTranslateResponse;
-  } catch {
-    throw new Error(`Google Translate returned non-JSON response (status ${res.status})`);
+  const data = (await res.json()) as MyMemoryResponse;
+
+  if (data.responseStatus && data.responseStatus !== 200) {
+    throw new Error(data.responseDetails || `MyMemory error ${data.responseStatus}`);
   }
 
-  // Concatenate all translated segments
-  const segments = data[0];
-  const translated = segments
-    .map((s) => (typeof s[0] === "string" ? s[0] : ""))
-    .join("");
+  const translated = data.responseData?.translatedText;
+  if (typeof translated !== "string" || translated === "") {
+    throw new Error("MyMemory returned empty translation");
+  }
 
-  // Detected language is at index 2
-  const detectedLang = typeof data[2] === "string" ? data[2] : null;
-
-  return { translated, detectedLang };
+  // MyMemory sometimes returns warnings in the translated text (e.g. "MYMEMORY WARNING ...")
+  // The actual translation is the first segment before any newline.
+  const cleaned = translated.split("\n")[0].trim();
+  return cleaned;
 }
 
 /**
- * Detect language of text by translating a short probe to English.
- * Returns an ISO 639-1 / BCP-47 language code (e.g. "zh-CN", "en", "fr").
+ * MyMemory does not support autodetect. We default the source to English.
+ * (The UI's "auto" block still works — it just means "I'll pick a source".)
  */
-export async function detectLanguage(text: string): Promise<string> {
-  const probe = text.slice(0, 50);
-  const { detectedLang } = await googleTranslate(probe, "auto", "en");
-  if (!detectedLang) throw new Error("Could not detect language");
-  return detectedLang;
+export async function detectLanguage(_text: string): Promise<string> {
+  return "en";
 }
 
 /** Translate text from source to target language */
@@ -209,6 +201,5 @@ export async function translateText(
   target: string
 ): Promise<string> {
   const sl = source === "auto" ? "auto" : source;
-  const { translated } = await googleTranslate(text, sl, target);
-  return translated;
+  return myMemoryTranslate(text, sl, target);
 }
